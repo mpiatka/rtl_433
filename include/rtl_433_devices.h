@@ -153,6 +153,7 @@
     DECL(holman_ws5029pwm) \
     DECL(archos_tbh) \
     DECL(ws2032) \
+    DECL(solight_dy01) \
 
     /* Add new decoders here. */
 
