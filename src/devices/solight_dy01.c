@@ -11,6 +11,12 @@
 
 #include "decoder.h"
 
+static int get_bit(uint8_t *data, int n){
+    uint8_t res = data[n/8] & (0x80 >> (n % 8));
+
+    return res != 0;
+}
+
 static int solight_dy01_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 {
     int row;
@@ -26,48 +32,66 @@ static int solight_dy01_callback(r_device *decoder, bitbuffer_t *bitbuffer)
 
     b = bitbuffer->bb[row];
 
+    //Check zero bits between dip bits
     for(int i = 0; i < 5; i++){
-    	dip[i] = (b[i/4] & (0xC0 >> ((i % 4) * 2))) ? 0 : 1;
+        if(get_bit(b, (i * 2) + 1))
+            return DECODE_FAIL_SANITY;
     }
 
-    for(int i = 0; i < 5; i++){
-    	if(b[1 + i/3] & (0x40 >> (((i % 3) + 1 - i/3) * 2))){
-		outlet = i;
-	}
+    //Check one bits between outlet bits
+    for(int i = 0; i < 6; i++){
+        if(!get_bit(b, (i * 2) + 10))
+            return DECODE_FAIL_SANITY;
     }
 
-    state = (b[2] & 0x01) ? 1 : 0;
+    //Get dip switches
+    for(int i = 0; i < 5; i++){
+        dip[i] = !get_bit(b, i * 2);
+    }
+
+    //Get outlet
+    for(int i = 0; i < 5; i++){
+        if(get_bit(b, (i * 2) + 11)){
+            if(outlet != -1)
+                return DECODE_FAIL_SANITY;
+
+            outlet = i;
+        }
+    }
+
+    state = get_bit(b, 23);
+    if(get_bit(b, 21) == state)
+        return DECODE_FAIL_SANITY;
 
     /* clang-format off */
     data = data_make(
-            "model",            "",                 DATA_STRING,    _X("Solight-DY01","Solight-DY01"),
-            "dip",               "Dip",             DATA_ARRAY, data_array(5, DATA_INT, dip),
-            "outlet",       "Outlet",          DATA_INT,       outlet,
-            "state",    "State",      DATA_INT,    state,
+            "model",   "",        DATA_STRING,  _X("Solight-DY01","Solight-DY01"),
+            "dip",     "Dip",     DATA_ARRAY,   data_array(5, DATA_INT, dip),
+            "outlet",  "Outlet",  DATA_INT,     outlet,
+            "state",   "State",   DATA_INT,     state,
             NULL);
     /* clang-format on */
 
     decoder_output_data(decoder, data);
     return 1;
-
 }
 
 static char *output_fields[] = {
-        "model",
-        "dip",
-	"outlet",
-	"state",
-        NULL,
+    "model",
+    "dip",
+    "outlet",
+    "state",
+    NULL,
 };
 
 r_device solight_dy01 = {
-        .name        = "Solight DY01 remote outlet",
-        .modulation  = OOK_PULSE_PPM,
-        .short_width = 136,
-        .long_width  = 428,
-        .gap_limit   = 452,
-        .reset_limit = 4516,
-        .decode_fn   = &solight_dy01_callback,
-        .disabled    = 0,
-        .fields      = output_fields,
+    .name        = "Solight DY01 remote outlet",
+    .modulation  = OOK_PULSE_PPM,
+    .short_width = 136,
+    .long_width  = 428,
+    .gap_limit   = 452,
+    .reset_limit = 4516,
+    .decode_fn   = &solight_dy01_callback,
+    .disabled    = 0,
+    .fields      = output_fields,
 };
