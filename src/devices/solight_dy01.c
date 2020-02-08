@@ -1,12 +1,31 @@
 /** @file
     Solight DY01 remote controlled socket
 
-    Copyright (c) 2019 Martin Piatka
+    Copyright (c) 2020 Martin Piatka
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
+*/
+/** @fn int solight_dy01_callback(r_device *decoder, bitbuffer_t *bitbuffer)
+Solight DY01 -- Remote controlled socket
+
+Sold in central Europe
+
+Data structure:
+
+A 24 bit payload is repeated while a button is pressed on the controller.
+
+    24 bit payload format: d0d0d0d0d0 1a1b1c1d1e1 x1y
+
+- 0: always 0
+- 1: always 1
+- d: inverted dip switch state (0 when in "on" position)
+- (a-e): socket selection (when controlling socket "b" the b bit is 1 others 0)
+- y: 1 when turning on, 0 when turning off
+- x: inversion of y
+
 */
 
 #include "decoder.h"
